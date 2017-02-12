@@ -7,40 +7,63 @@ var webpack = require('webpack')
 var opn = require('opn')
 var proxyMiddleware = require('http-proxy-middleware')
 var webpackConfig = require('./webpack.dev.conf')
+var bodyParser = require('body-parser');
 
 // default port where dev server listens for incoming traffic
 var port = process.env.PORT || config.dev.port
-// Define HTTP proxies to your custom API backend
-// https://github.com/chimurai/http-proxy-middleware
+    // Define HTTP proxies to your custom API backend
+    // https://github.com/chimurai/http-proxy-middleware
 var proxyTable = config.dev.proxyTable
 
 var app = express()
 var compiler = webpack(webpackConfig)
 
 var devMiddleware = require('webpack-dev-middleware')(compiler, {
-  publicPath: webpackConfig.output.publicPath,
-  quiet: true
+    publicPath: webpackConfig.output.publicPath,
+    quiet: true
 })
 
 var hotMiddleware = require('webpack-hot-middleware')(compiler, {
-  log: () => {}
-})
-// force page reload when html-webpack-plugin template changes
-compiler.plugin('compilation', function (compilation) {
-  compilation.plugin('html-webpack-plugin-after-emit', function (data, cb) {
-    hotMiddleware.publish({ action: 'reload' })
-    cb()
-  })
+        log: () => {}
+    })
+    // force page reload when html-webpack-plugin template changes
+compiler.plugin('compilation', function(compilation) {
+    compilation.plugin('html-webpack-plugin-after-emit', function(data, cb) {
+        hotMiddleware.publish({ action: 'reload' })
+        cb()
+    })
 })
 
 // proxy api requests
-Object.keys(proxyTable).forEach(function (context) {
-  var options = proxyTable[context]
-  if (typeof options === 'string') {
-    options = { target: options }
-  }
-  app.use(proxyMiddleware(context, options))
+Object.keys(proxyTable).forEach(function(context) {
+    var options = proxyTable[context]
+    if (typeof options === 'string') {
+        options = { target: options }
+    }
+    app.use(proxyMiddleware(context, options))
 })
+
+
+// API
+// configure app to use bodyParser()
+// this will let us get the data from a POST
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+var router = express.Router(); // get an instance of the express Router
+
+// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
+router.get('/', function(req, res) {
+    res.json({ message: 'hooray! welcome to our api!' });
+});
+
+router.get('/users', function(req, res) {
+    res.json(["hans", "michel", "sepp", "ueli"]);
+});
+
+app.use('/api', router);
+
+
 
 // handle fallback for HTML5 history API
 app.use(require('connect-history-api-fallback')())
@@ -58,18 +81,18 @@ app.use(staticPath, express.static('./static'))
 
 var uri = 'http://localhost:' + port
 
-devMiddleware.waitUntilValid(function () {
-  console.log('> Listening at ' + uri + '\n')
+devMiddleware.waitUntilValid(function() {
+    console.log('> Listening at ' + uri + '\n')
 })
 
-module.exports = app.listen(port, function (err) {
-  if (err) {
-    console.log(err)
-    return
-  }
+module.exports = app.listen(port, function(err) {
+    if (err) {
+        console.log(err)
+        return
+    }
 
-  // when env is testing, don't need open it
-  if (process.env.NODE_ENV !== 'testing') {
-    opn(uri)
-  }
+    // when env is testing, don't need open it
+    if (process.env.NODE_ENV !== 'testing') {
+        opn(uri)
+    }
 })
